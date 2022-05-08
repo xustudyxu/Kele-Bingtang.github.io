@@ -8,7 +8,7 @@ module.exports = {
         { text: 'Java基础', link: '/javase/' },
         { text: 'Java注解', link: '/javase/annotation/' },
         { text: 'Java反射', link: '/javase/reflex/' },
-        { text: 'JavaJUC', link: '/javase/juc/1/' },
+        { text: 'JavaJUC', link: '/javase/juc/' },
         { text: 'JavaJVM', link: '/java/jvm/' },
       ]
     },
