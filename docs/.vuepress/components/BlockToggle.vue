@@ -9,7 +9,7 @@ export default {
   },
   watch: {
     $route(to, from) {
-      if (this.$route.hash == "") {
+      if (to.path != from.path || this.$route.hash == "") {
         setTimeout(() => {
           this.addExpand(40);
         }, 1000);

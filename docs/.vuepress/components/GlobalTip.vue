@@ -77,6 +77,8 @@ export default {
  * type：弹窗类型（tip、success、warning、danger）
  * startHeight：第一个弹窗的高度，默认 50
  * dieTime：弹窗消失时间（毫秒），默认 3000 毫秒
+ * 
+ * 在 head 里添加图标 link 地址：https://at.alicdn.com/t/font_3114978_qe0b39no76.css
  */
 function addTip(content, type, startHeight = 50, dieTime = 3000) {
   var tip = document.querySelectorAll(".global-tip");
