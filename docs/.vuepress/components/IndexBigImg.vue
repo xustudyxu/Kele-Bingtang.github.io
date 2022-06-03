@@ -27,12 +27,11 @@ export default {
       bubble: false,
       bubblePosition: 0,
       bubbleNum: 200,
-      // cleartextFade: false,
-      // isFirst: true, // 是否是第一次进入页面
+      fadeInInterval: "", // 淡入定时器
+      fadeOutInterval: "", // 淡出定时器
     };
   },
   mounted() {
-    // document.addEventListener("visibilitychange", this.leaveOrBackTab);
     const arrow = document.getElementById(banner_arrow);
     arrow && arrow.parentNode.removeChild(arrow);
     let a = document.createElement("a");
@@ -178,15 +177,15 @@ export default {
       navbar.className = "navbar navbar1 blur";
     },
     // 导航栏的字体颜色
-    blurText() {
+    blurText(navColor = this.navColor) {
       let title = document.getElementsByClassName("site-name")[0];
       let search = document.getElementsByClassName("search-box")[0];
       let nav = document.getElementsByClassName("nav-links")[0];
-      if (this.navColor == 1) {
+      if (navColor == 1) {
         title.className = "site-name can-hide";
         nav.className = "nav-links can-hide";
         search.className = "search-box";
-      } else if (this.navColor == 2) {
+      } else if (navColor == 2) {
         title.className = "site-name site-name1 can-hide";
         nav.className = "nav-links nav-links1 can-hide";
         search.className = "search-box search-box1";
@@ -244,26 +243,22 @@ export default {
         );
       }
       document.getElementsByClassName(banner)[0].parentNode.append(div);
+
+      setTimeout(() => {
+        addTip("cdn.jsdelivr.net 加速的图片或者 JS 文件无法加载出来，换成 fastly.jsdelivr.net 即可", "danger", 50, 10000);
+      }, 100);
     },
     // 字体淡入淡出
     textFadeInAndOut(
-      desc = this.desc,  // 文字描述
-      descFontSize = this.descFontSize,  // 字体大小
+      desc = this.desc, // 文字描述
+      descFontSize = this.descFontSize, // 字体大小
       descFadeInTime = this.descFadeInTime, // 淡入时间
       descFadeOutTime = this.descFadeOutTime, // 淡出时间
       descNextTime = this.descNextTime // 下一个描述出现时间
     ) {
       let descElement = document.getElementsByClassName("description")[0];
-      let hero = document.getElementsByClassName("hero")[0];
-      // 清除定时器 字体淡入淡出 isFirst
-      // if (this.cleartextFade && descElement) {
-      //   hero.removeChild(descElement);
-      //   return;
-      // }
 
       if (descElement) {
-        // this.isFirst = false;
-
         // 非首页不触发
         descElement.style.fontSize = descFontSize;
         var span = document.createElement("span"); // 创建 | 的元素
@@ -276,8 +271,9 @@ export default {
         descElement.appendChild(document.createElement("span")); // 创建 desc 所在的新元素
         span && descElement.appendChild(span); // 添加 | 的元素
         // 初始化迭代
-        var interval1 = setInterval(fadeIn, descFadeInTime);
-        var interval2;
+        this.fadeInInterval = setInterval(() => {
+          fadeIn();
+        }, descFadeInTime);
       } else {
         let hero = document.getElementsByClassName("hero")[0];
         descElement = document.createElement("p");
@@ -285,7 +281,7 @@ export default {
         descElement && hero.appendChild(descElement);
       }
       // 淡入回调
-      function fadeIn() {
+      let fadeIn = () => {
         if (descElement) {
           span.style.animation = "none"; // 淡入时，| 光标不允许闪烁
           if (desc instanceof Array && desc.length > 0) {
@@ -294,31 +290,35 @@ export default {
           }
           descElement.firstChild.innerText = description.substring(0, index++);
           if (index > description.length) {
-            clearInterval(interval1);
+            clearInterval(this.fadeInInterval);
             span.style.animation = "typedBlink 1s infinite"; // 淡入结束，| 光标允许闪烁
             setTimeout(() => {
-              interval2 = setInterval(fadeOut, descFadeOutTime);
+              this.fadeOutInterval = setInterval(() => {
+                fadeOut();
+              }, descFadeOutTime);
             }, descNextTime);
           }
         }
-      }
+      };
       // 淡出回调
-      function fadeOut() {
+      let fadeOut = () => {
         if (index >= 0) {
           span.style.animation = "none"; // 淡出时，| 光标不允许闪烁
           descElement.firstChild.innerText = description.substring(0, index--);
         } else {
-          clearInterval(interval2);
+          clearInterval(this.fadeOutInterval);
           span.style.animation = "typedBlink 1s infinite"; // 淡出结束，| 光标允许闪烁
           setTimeout(() => {
             length++;
             if (length >= desc.length) {
               length = 0; // desc 展示完，重新开始计数
             }
-            interval1 = setInterval(fadeIn, descFadeInTime);
+            this.fadeInInterval = setInterval(() => {
+              fadeIn();
+            }, descFadeInTime);
           }, descNextTime);
         }
-      }
+      };
     },
     // 气泡效果
     canvasBubble(bubbleNum = this.bubbleNum) {
@@ -422,20 +422,16 @@ export default {
       };
       Event.Init();
     },
-    // 离开页面时，清除淡入淡出的定时器，重新回来时，恢复淡入淡出效果，感谢贡献者：@前端有道
-    // leaveOrBackTab(e) {
-    //   if (!this.descFade) return; // 没开启情况下不执行
-    //   if (e.target.visibilityState == "visible") {
-    //     this.cleartextFade = false;
-    //   } else {
-    //     this.cleartextFade = true;
-    //   }
-    //   this.textFadeInAndOut();
-    // },
   },
-  // beforeDestroy() {
-  //   document.removeEventListener("visibilitychange", this.leaveOrBackTab);
-  // },
+  // 防止重写编译时，导致定时器叠加问题
+  created() {
+    clearInterval(this.fadeInInterval);
+    clearInterval(this.fadeOutInterval);
+  },
+  beforeDestroy() {
+    clearInterval(this.fadeInInterval);
+    clearInterval(this.fadeOutInterval);
+  },
 };
 /**
  * 添加消息提示
@@ -543,8 +539,7 @@ function nextAllTipElement(elem) {
 /* 能跳转的一级导航 */
 .vdoing-index-class .site-name1
 
-/* 左侧的名字 */
-  {
+/* 左侧的名字 */ {
   color: #fff !important;
 }
 

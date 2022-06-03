@@ -5,9 +5,9 @@ module.exports = {
     {
       text: 'java基础',
       items: [
-        { text: 'Java基础', link: '/javase/' },
-        { text: 'Java注解', link: '/javase/annotation/' },
-        { text: 'Java反射', link: '/javase/reflex/' },
+        { text: 'Java基础', link: '/java/se/' },
+        { text: 'Java集合', link: '/java/collection/' },
+        // { text: 'Java反射', link: '/javase/reflex/' },
         { text: 'JavaJUC', link: '/java/juc/' },
         { text: 'JavaJVM', link: '/java/jvm/' },
       ]
