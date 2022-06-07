@@ -31,9 +31,17 @@ export default {
     return {
       username: "",
       password: "",
+      privateInfo: {
+        username: "",
+        password: "",
+        loginKey: "",
+        expire: "",
+        loginInfo: "",
+      },
     };
   },
   created() {
+    // Enter 键也能触发登录按钮
     document.onkeyup = (e) => {
       let key = window.event.keyCode;
       if (key == 13) {
@@ -42,43 +50,79 @@ export default {
     };
   },
   methods: {
+    /**
+     * 登录验证
+     */
     login() {
-      let { username, password, expire, loginKey } =
+      let { privateInfo } = this;
+      // 获取全局配置
+      let { username, password, loginKey, expire, loginInfo } =
         this.$themeConfig.privatePage;
+      // 计算正确的过期时间
+      expire = this.getExpire(expire);
+      !expire && (expire = 86400000);
+      // checkLoginInfo：判断是否进行了 loginInfo 登录
+      let checkLoginInfo = false;
       if (this.username && this.password) {
-        // 某个文章有用户信息，则覆盖全局的信息
+        // 如果是单个文章的用户信息，覆盖全局的用户信息
         if (this.$route.query.singlePage) {
-          this.$filterPosts.forEach((item) => {
-            if (item.path == this.$route.query.toPath) {
-              username = item.frontmatter.username;
-              password = item.frontmatter.password;
-              loginKey = item.frontmatter.title;
-              expire = item.frontmatter.expire || expire;
-              return;
-            }
-          });
+          try {
+            this.$filterPosts.forEach((item) => {
+              if (item.path == this.$route.query.toPath) {
+                privateInfo.username = item.frontmatter.username;
+                privateInfo.password = item.frontmatter.password;
+                privateInfo.loginKey = item.frontmatter.permalink;
+                privateInfo.expire = this.getExpire(item.frontmatter.expire) || expire;
+                privateInfo.loginInfo = item.frontmatter.loginInfo;
+                // 利用异常机制跳出 forEach 循环，break、return、continue 不会起作用
+                throw new Error();
+              }
+            });
+          } catch (e) {}
         }
-        if (this.username == username && this.password == password) {
-          const data = JSON.stringify({
-            username: this.username,
-            password: this.password,
-            time: new Date().getTime(),
-            expire: expire,
-          });
-          window.localStorage.setItem(loginKey, data);
-          addTip("登录成功，正在跳转 ...", "success");
-          if (this.$route.query.toPath) {
-            this.$router.push({
-              path: this.$route.query.toPath,
-            });
-          } else {
-            this.$router.push({
-              path: "/",
-            });
+        if (
+          !privateInfo.username &&
+          !privateInfo.password &&
+          !privateInfo.loginInfo
+        ) {
+          privateInfo.loginKey = this.$route.query.toPath;
+          privateInfo.loginInfo = loginInfo;
+          privateInfo.expire ? '' : privateInfo.expire = expire;
+        }
+        if (privateInfo.loginInfo) {
+          // 如果是数组：即单个文章设置的 loginInfo
+          if (Array.isArray(privateInfo.loginInfo)) {
+            checkLoginInfo = this.checkLoginInfo(privateInfo.loginInfo);
+          } else if (
+            privateInfo.loginInfo.hasOwnProperty(this.$route.query.toPath)
+          ) {
+            // 如果是对象，即全局设置的 loginInfo
+            checkLoginInfo = this.checkLoginInfo(
+              privateInfo.loginInfo[this.$route.query.toPath]
+            );
           }
-        } else {
-          this.password = ""; // 清空密码
-          addTip("用户名或者密码错误！请联系博主获取用户名和密码！", "danger");
+        }
+        // 如果没有触发 loginInfo 登录或者 loginInfo 登录失败，则进行单个用户名密码登录
+        if (!checkLoginInfo) {
+          // 如果使用文章配置的用户名密码
+          if (
+            this.username == privateInfo.username &&
+            this.password == privateInfo.password
+          ) {
+            this.storageLocalAndJump(this.privateInfo.loginKey);
+          } else if (
+            // 如果使用全局配置的用户名密码
+            this.username == username &&
+            this.password == password
+          ) {
+            this.storageLocalAndJump(loginKey);
+          } else {
+            this.password = ""; // 清空密码
+            addTip(
+              "用户名或者密码错误！请联系博主获取用户名和密码！",
+              "danger"
+            );
+          }
         }
       } else if (this.username == "" && this.password != "") {
         addTip("用户名不能为空！", "warning");
@@ -88,6 +132,63 @@ export default {
         addTip("您访问的文章是私密文章，请先输入用户名和密码！", "info");
       }
     },
+    /**
+     * 检查 loginInfo 里的用户名和密码
+     */
+    checkLoginInfo(loginInfo = this.privateInfo.loginInfo) {
+      try {
+        loginInfo.forEach((item) => {
+          if (
+            this.username == item.username &&
+            this.password == item.password
+          ) {
+            this.storageLocalAndJump(this.privateInfo.loginKey);
+            // 利用异常机制跳出 forEach 循环，break、return、continue 不会起作用
+            throw new Error();
+          }
+        });
+      } catch (error) {
+        return true;
+      }
+      return false;
+    },
+    /**
+     * 添加登录信息到本地存储区，并跳转到私密文章
+     */
+    storageLocalAndJump(loginKey = this.privateInfo.loginKey) {
+      const data = JSON.stringify({
+        username: this.username,
+        password: this.password,
+        time: new Date().getTime(),
+        expire: this.privateInfo.expire,
+      });
+      window.localStorage.setItem(loginKey, data);
+      addTip("登录成功，正在跳转 ...", "success");
+      if (this.$route.query.toPath) {
+        this.$router.push({
+          path: this.$route.query.toPath,
+        });
+      } else {
+        this.$router.push({
+          path: "/",
+        });
+      }
+    },
+    /**
+     * 计算过期时间
+     */
+    getExpire(expire) {
+      if (expire) {
+        if (expire.indexOf("d") !== -1) {
+          expire = parseInt(expire.replace("d", "")) * 24 * 60 * 60 * 1000; // 天
+        } else if (expire.indexOf("h") !== -1) {
+          expire = parseInt(expire.replace("h", "")) * 60 * 60 * 1000; // 小时
+        }else {
+          expire = parseInt(expire) * 1000; // 不加单位为秒
+        }
+      }
+      return expire;
+    }
   },
 };
 /**
