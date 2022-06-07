@@ -217,8 +217,7 @@ export default {
     },
   },
   // 防止重写编译时，导致页面信息重复出现问题
-  created() {
-    clearInterval(this.interval);
+  beforeMount() {
     this.removeElement(".page-view");
     this.removeElement(".book-words");
     this.removeElement(".reading-time");

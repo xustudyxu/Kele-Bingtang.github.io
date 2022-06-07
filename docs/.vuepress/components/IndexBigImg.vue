@@ -424,7 +424,7 @@ export default {
     },
   },
   // 防止重写编译时，导致定时器叠加问题
-  created() {
+  beforeMount() {
     clearInterval(this.fadeInInterval);
     clearInterval(this.fadeOutInterval);
   },

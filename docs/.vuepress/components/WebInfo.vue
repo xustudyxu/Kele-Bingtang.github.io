@@ -202,7 +202,7 @@ export default {
         }
       }, iterationTime);
     },
-    created() {
+    beforeMount() {
       let webInfo = document.querySelector(".web-info");
       webInfo && webInfo.parentNode.removeChild(webInfo);
     },

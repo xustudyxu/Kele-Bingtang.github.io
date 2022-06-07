@@ -40,7 +40,7 @@ export default {
       },
     };
   },
-  created() {
+  mounted() {
     // Enter 键也能触发登录按钮
     document.onkeyup = (e) => {
       let key = window.event.keyCode;
@@ -72,7 +72,8 @@ export default {
                 privateInfo.username = item.frontmatter.username;
                 privateInfo.password = item.frontmatter.password;
                 privateInfo.loginKey = item.frontmatter.permalink;
-                privateInfo.expire = this.getExpire(item.frontmatter.expire) || expire;
+                privateInfo.expire =
+                  this.getExpire(item.frontmatter.expire) || expire;
                 privateInfo.loginInfo = item.frontmatter.loginInfo;
                 // 利用异常机制跳出 forEach 循环，break、return、continue 不会起作用
                 throw new Error();
@@ -87,7 +88,7 @@ export default {
         ) {
           privateInfo.loginKey = this.$route.query.toPath;
           privateInfo.loginInfo = loginInfo;
-          privateInfo.expire ? '' : privateInfo.expire = expire;
+          privateInfo.expire ? "" : (privateInfo.expire = expire);
         }
         if (privateInfo.loginInfo) {
           // 如果是数组：即单个文章设置的 loginInfo
@@ -183,12 +184,12 @@ export default {
           expire = parseInt(expire.replace("d", "")) * 24 * 60 * 60 * 1000; // 天
         } else if (expire.indexOf("h") !== -1) {
           expire = parseInt(expire.replace("h", "")) * 60 * 60 * 1000; // 小时
-        }else {
+        } else {
           expire = parseInt(expire) * 1000; // 不加单位为秒
         }
       }
       return expire;
-    }
+    },
   },
 };
 /**

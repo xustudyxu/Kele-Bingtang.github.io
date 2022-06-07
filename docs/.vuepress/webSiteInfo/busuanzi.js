@@ -79,13 +79,6 @@ bszCaller = {
   },
 };
 
-export default fetch = () => {
-  bszTag && bszTag.hides();
-  bszCaller.fetch("//busuanzi.ibruce.info/busuanzi?jsonpCallback=BusuanziCallback", function (t) {
-    bszTag.texts(t), bszTag.shows();
-  })
-};
-
 bszTag = {
   bszs: ["site_pv", "page_pv", "site_uv"],
   texts: function (n) {
@@ -108,7 +101,15 @@ bszTag = {
   },
 };
 
+
 // 修复Node同构代码的问题
 // if (typeof document !== "undefined") {
 //   fetch();
 // }
+
+export default () => {
+  bszTag && bszTag.hides();
+  bszCaller.fetch("//busuanzi.ibruce.info/busuanzi?jsonpCallback=BusuanziCallback", function (t) {
+    bszTag.texts(t), bszTag.shows();
+  })
+};
