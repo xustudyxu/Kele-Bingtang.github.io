@@ -37,6 +37,7 @@ export default {
         loginKey: "",
         expire: "",
         loginInfo: "",
+        allLoginKey: "kbt",
       },
     };
   },
@@ -56,73 +57,108 @@ export default {
     login() {
       let { privateInfo } = this;
       // 获取全局配置
-      let { username, password, loginKey, expire, loginInfo } =
+      let { username, password, loginKey, expire, firstLoginKey, loginInfo } =
         this.$themeConfig.privatePage;
+      !loginKey && (loginKey = "vdoing_manager"); // 默认为 vdoing_manager
       // 计算正确的过期时间
       expire = this.getExpire(expire);
       !expire && (expire = 86400000);
-      // checkLoginInfo：判断是否进行了 loginInfo 登录
-      let checkLoginInfo = false;
       if (this.username && this.password) {
-        // 如果是单个文章的用户信息，覆盖全局的用户信息
-        if (this.$route.query.singlePage) {
-          try {
-            this.$filterPosts.forEach((item) => {
-              if (item.path == this.$route.query.toPath) {
-                privateInfo.username = item.frontmatter.username;
-                privateInfo.password = item.frontmatter.password;
-                privateInfo.loginKey = item.frontmatter.permalink;
-                privateInfo.expire =
-                  this.getExpire(item.frontmatter.expire) || expire;
-                privateInfo.loginInfo = item.frontmatter.loginInfo;
-                // 利用异常机制跳出 forEach 循环，break、return、continue 不会起作用
-                throw new Error();
-              }
-            });
-          } catch (e) {}
-        }
-        if (
-          !privateInfo.username &&
-          !privateInfo.password &&
-          !privateInfo.loginInfo
-        ) {
-          privateInfo.loginKey = this.$route.query.toPath;
-          privateInfo.loginInfo = loginInfo;
-          privateInfo.expire ? "" : (privateInfo.expire = expire);
-        }
-        if (privateInfo.loginInfo) {
-          // 如果是数组：即单个文章设置的 loginInfo
-          if (Array.isArray(privateInfo.loginInfo)) {
-            checkLoginInfo = this.checkLoginInfo(privateInfo.loginInfo);
-          } else if (
-            privateInfo.loginInfo.hasOwnProperty(this.$route.query.toPath)
-          ) {
-            // 如果是对象，即全局设置的 loginInfo
-            checkLoginInfo = this.checkLoginInfo(
-              privateInfo.loginInfo[this.$route.query.toPath]
+        // 进入网站前进行验证
+        if (this.$route.query.verifyMode == "first") {
+          privateInfo.expire = expire;
+          !firstLoginKey && (firstLoginKey = "vdoing_first_login"); // 默认为 vdoing_first_login
+          // 检查 loginInfo 是否验证成功
+          let check = false;
+          if (loginInfo && loginInfo.hasOwnProperty(firstLoginKey)) {
+            check = this.checkLoginInfoAndJump(
+              loginInfo[firstLoginKey],
+              firstLoginKey
             );
           }
-        }
-        // 如果没有触发 loginInfo 登录或者 loginInfo 登录失败，则进行单个用户名密码登录
-        if (!checkLoginInfo) {
-          // 如果使用文章配置的用户名密码
+          // 如果第一次进入网站以管理员登录，则网站的所有私密文章不再需要验证
           if (
-            this.username == privateInfo.username &&
-            this.password == privateInfo.password
-          ) {
-            this.storageLocalAndJump(this.privateInfo.loginKey);
-          } else if (
-            // 如果使用全局配置的用户名密码
+            !check &&
             this.username == username &&
             this.password == password
           ) {
-            this.storageLocalAndJump(loginKey);
-          } else {
+            // 如果管理员登录，直接 key = vdoing_manager，不需要再次 key = vdoing_first_login
+            // this.storageLocalAndJump(firstLoginKey, false);
+            this.storageLocalAndJump(loginKey, true);
+          } else if (!check) {
             this.password = ""; // 清空密码
             addTip(
               "用户名或者密码错误！请联系博主获取用户名和密码！",
               "danger"
             );
+          }
+        } else {
+          // 如果是单个文章验证
+          if (this.$route.query.verifyMode == "single") {
+            try {
+              this.$filterPosts.forEach((item) => {
+                if (item.path == this.$route.query.toPath) {
+                  privateInfo.username = item.frontmatter.username;
+                  privateInfo.password = item.frontmatter.password;
+                  privateInfo.loginKey = item.frontmatter.permalink;
+                  privateInfo.expire =
+                    this.getExpire(item.frontmatter.expire) || expire;
+                  privateInfo.loginInfo = item.frontmatter.loginInfo;
+                  // 利用异常机制跳出 forEach 循环，break、return、continue 不会起作用
+                  throw new Error();
+                }
+              });
+            } catch (e) {}
+          }
+          // checkLoginInfo：判断是否进行了 loginInfo 验证
+          let checkLoginInfo = false;
+          // 如果没有配置单私密文章用户信息，则使用全局配置
+          if (
+            !privateInfo.username &&
+            !privateInfo.password &&
+            !privateInfo.loginInfo
+          ) {
+            privateInfo.loginKey = this.$route.query.toPath;
+            privateInfo.loginInfo = loginInfo;
+            privateInfo.expire ? "" : (privateInfo.expire = expire);
+          }
+          // 先进行 loginInfo 验证
+          if (privateInfo.loginInfo) {
+            // 如果是数组：即单个文章设置的 loginInfo
+            if (Array.isArray(privateInfo.loginInfo)) {
+              checkLoginInfo = this.checkLoginInfoAndJump(
+                privateInfo.loginInfo
+              );
+            } else if (
+              privateInfo.loginInfo.hasOwnProperty(this.$route.query.toPath)
+            ) {
+              // 如果是对象，即全局设置的 loginInfo
+              checkLoginInfo = this.checkLoginInfoAndJump(
+                privateInfo.loginInfo[this.$route.query.toPath]
+              );
+            }
+          }
+          // 如果没有触发 loginInfo 验证或者 loginInfo 验证失败，则进行单个用户名密码验证
+          if (!checkLoginInfo) {
+            // 如果使用文章配置的用户名密码
+            if (
+              this.username == privateInfo.username &&
+              this.password == privateInfo.password
+            ) {
+              this.storageLocalAndJump(this.privateInfo.loginKey, true);
+            } else if (
+              // 如果使用全局配置的用户名密码
+              this.username == username &&
+              this.password == password
+            ) {
+              this.storageLocalAndJump(loginKey, true);
+            } else {
+              this.password = ""; // 清空密码
+              addTip(
+                "用户名或者密码错误！请联系博主获取用户名和密码！",
+                "danger"
+              );
+            }
           }
         }
       } else if (this.username == "" && this.password != "") {
@@ -135,15 +171,19 @@ export default {
     },
     /**
      * 检查 loginInfo 里的用户名和密码
+     * 匹配成功返回 true，失败返回 false
      */
-    checkLoginInfo(loginInfo = this.privateInfo.loginInfo) {
+    checkLoginInfoAndJump(
+      loginInfo = this.privateInfo.loginInfo,
+      loginKey = this.privateInfo.loginKey
+    ) {
       try {
         loginInfo.forEach((item) => {
           if (
             this.username == item.username &&
             this.password == item.password
           ) {
-            this.storageLocalAndJump(this.privateInfo.loginKey);
+            this.storageLocalAndJump(loginKey, true);
             // 利用异常机制跳出 forEach 循环，break、return、continue 不会起作用
             throw new Error();
           }
@@ -155,8 +195,10 @@ export default {
     },
     /**
      * 添加登录信息到本地存储区，并跳转到私密文章
+     * loginKey：存储到本地的 key，方便自动验证
+     * jump：是否跳转到私密文章，默认存储到本地后跳转
      */
-    storageLocalAndJump(loginKey = this.privateInfo.loginKey) {
+    storageLocalAndJump(loginKey = this.privateInfo.loginKey, jump = true) {
       const data = JSON.stringify({
         username: this.username,
         password: this.password,
@@ -164,15 +206,17 @@ export default {
         expire: this.privateInfo.expire,
       });
       window.localStorage.setItem(loginKey, data);
-      addTip("登录成功，正在跳转 ...", "success");
-      if (this.$route.query.toPath) {
-        this.$router.push({
-          path: this.$route.query.toPath,
-        });
-      } else {
-        this.$router.push({
-          path: "/",
-        });
+      if (jump) {
+        addTip("登录成功，正在跳转 ...", "success");
+        if (this.$route.query.toPath) {
+          this.$router.push({
+            path: this.$route.query.toPath,
+          });
+        } else {
+          this.$router.push({
+            path: "/",
+          });
+        }
       }
     },
     /**
@@ -200,7 +244,7 @@ export default {
  * dieTime：弹窗消失时间（毫秒），默认 3000 毫秒
  */
 function addTip(content, type, startHeight = 50, dieTime = 3000) {
-  var tip = document.querySelectorAll(".private-tip");
+  var tip = document.querySelectorAll(".global-tip");
   var time = new Date().getTime();
   // 获取最后消息提示元素的高度
   var top = tip.length == 0 ? 0 : tip[tip.length - 1].getAttribute("data-top");
@@ -210,7 +254,7 @@ function addTip(content, type, startHeight = 50, dieTime = 3000) {
     (tip.length != 0 ? tip[tip.length - 1].offsetHeight + 17 : startHeight);
 
   let div = document.createElement("div");
-  div.className = `private-tip tip-${type} ${time}`;
+  div.className = `global-tip tip-${type} ${time}`;
   div.style.top = parseInt(top) + "px";
   div.setAttribute("data-top", lastTop);
   if (type == "info" || type == 1) {
@@ -307,7 +351,7 @@ div.v-dialog-overlay {
   opacity: 1 !important;
 }
 
-.private-tip {
+.global-tip {
   position: fixed;
   display: flex;
   top: -10px;
@@ -324,7 +368,7 @@ div.v-dialog-overlay {
   line-height: 17px;
 }
 
-.private-tip p {
+.global-tip p {
   line-height: 17px;
   margin: 0;
   font-size: 14px;
