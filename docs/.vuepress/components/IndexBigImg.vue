@@ -243,10 +243,6 @@ export default {
         );
       }
       document.getElementsByClassName(banner)[0].parentNode.append(div);
-
-      setTimeout(() => {
-        addTip("cdn.jsdelivr.net 加速的图片或者 JS 文件无法加载出来，换成 fastly.jsdelivr.net 即可", "danger", 50, 10000);
-      }, 100);
     },
     // 字体淡入淡出
     textFadeInAndOut(

@@ -577,15 +577,13 @@ export default {
       window.requestAnimationFrame(render);
     },
     mountedElement() {
-      var fantasy = document.getElementsByClassName("fantasy")[0];
-      document.getElementsByClassName("banner")[0].appendChild(fantasy);
-      // 下面是全局背景图，如果使用，则取 plugins 里以组件名来注册插件
       // let interval = setInterval(() => {
-      //   let theme = document.getElementsByClassName("theme-container")[0];
-      //   if (theme) {
-      //     theme.appendChild(fantasy);
-      //   } 
-      // }, 100);
+      //   let fantasy = document.getElementsByClassName("fantasy")[0];
+      //   let banner = document.getElementsByClassName("banner")[0];
+      //   // 去掉黑色栅格背景
+      //   banner.style.background = "";
+      //   fantasy && banner && banner.appendChild(fantasy) && clearInterval(interval);
+      // }, 200);
     },
     clearBannerColor() {
       let bannerColor = document.getElementsByClassName("banner-color")[0];
